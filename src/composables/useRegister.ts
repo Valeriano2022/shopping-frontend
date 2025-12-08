@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { signUp } from '@/services/useAuthService'
+import { signUp } from '@/services/auth-service'
 import type { RegisterRequest } from '@/types/auth'
 import { useToastHandler } from '@/composables/useToastHandler'
 
