@@ -10,8 +10,6 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import type { RetryAxiosRequestConfig, QueueItem } from '@/types/api'
 import type { RefreshTokenResponse } from '@/types/auth'
 
-
-// API INSTANCE
 export const api: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   withCredentials: true,
@@ -19,35 +17,29 @@ export const api: AxiosInstance = axios.create({
   timeout: 10000,
 })
 
-// Separate refresh client to avoid interceptor recursion
+// Separate client to avoid recursion when refreshing
 const refreshClient: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   withCredentials: true,
 })
 
-
-// REFRESH STATE
 let isRefreshing = false
 let queue: QueueItem[] = []
 
 const resolveQueue = (error: unknown, token: string | null): void => {
-  queue.forEach(({ resolve, reject }) => {
-    error ? reject(error) : resolve(token)
-  })
+  queue.forEach(({ resolve, reject }) => (error ? reject(error) : resolve(token)))
   queue = []
 }
 
-
-// REFRESH LOGIC (hits /auth/refresh)
 const refreshAccessToken = async (): Promise<string> => {
-  const res = await refreshClient.post('/auth/refresh', {})
-  const newToken = (res.data as RefreshTokenResponse).accessToken
+  const res = await refreshClient.post<RefreshTokenResponse>('/auth/refresh', {})
+  const newToken = res.data.accessToken
+
   saveAccessToken(newToken)
+
   return newToken
 }
 
-
-// REQUEST INTERCEPTOR — attach Access Token
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = getAccessToken()
@@ -60,8 +52,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 )
 
-
-// RESPONSE INTERCEPTOR — refresh on 401
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
 
@@ -69,16 +59,19 @@ api.interceptors.response.use(
     const auth = useAuthStore()
     const original = error.config as RetryAxiosRequestConfig
 
-    if (error.response?.status !== 401) {
+    // Only refresh on 401 or 403
+    const status = error.response?.status
+    if (![401, 403].includes(status ?? 0)) {
       return Promise.reject(error)
     }
 
+    // Already retried? → logout
     if (original._retry) {
       auth.logout()
       return Promise.reject(error)
     }
 
-    // Queue all failed requests during refresh
+    // If refresh already running → queue request
     if (isRefreshing) {
       return new Promise((resolve, reject) => {
         queue.push({ resolve, reject })
@@ -89,7 +82,7 @@ api.interceptors.response.use(
       })
     }
 
-    // Start refresh process
+    // Start refresh
     original._retry = true
     isRefreshing = true
 
@@ -98,16 +91,15 @@ api.interceptors.response.use(
 
       resolveQueue(null, newToken)
 
+      // retry original request
       original.headers = original.headers ?? {}
       original.headers.Authorization = `Bearer ${newToken}`
 
       return api(original)
-
     } catch (refreshError) {
       resolveQueue(refreshError, null)
       auth.logout()
       return Promise.reject(refreshError)
-
     } finally {
       isRefreshing = false
     }
