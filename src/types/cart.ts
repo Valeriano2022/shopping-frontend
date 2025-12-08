@@ -1,10 +1,11 @@
-import type { ProductResponse } from "./product"
+import type { ProductResponse } from './product'
 
 export interface AddToCartRequest {
   productId: number
   quantity: number
 }
 export interface UpdateCartItemRequest {
+  cartItemId: number
   quantity: number
 }
 export interface CartItemResponse {
@@ -23,4 +24,3 @@ export interface CartResponse {
   createdAt: string
   updatedAt: string
 }
-
