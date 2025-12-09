@@ -2,9 +2,19 @@
 import { onMounted } from 'vue'
 import { useOrders } from '@/composables/useOrders'
 import { useRouter } from 'vue-router'
+import { formatDate } from '@/utils/date'
 
-const { page, loadOrders, loading } = useOrders()
+const { page, loadOrders, loading, filteredOrders, setStatus, selectedStatus } = useOrders()
+const statuses = ['ALL', 'NEW', 'CANCELLED', 'PENDING', 'COMPLETED'] as const
 const router = useRouter()
+
+const underlineColors = {
+  ALL: 'border-slate-900 text-slate-900',
+  NEW: 'border-blue-600 text-blue-600',
+  CANCELLED: 'border-red-600 text-red-600',
+  PENDING: 'border-yellow-500 text-yellow-600',
+  COMPLETED: 'border-green-600 text-green-600',
+}
 
 onMounted(() => {
   loadOrders(0, 10)
@@ -26,23 +36,36 @@ const goToOrder = (id: number) => {
     </div>
 
     <div v-else class="space-y-4">
+      <div class="flex gap-4 mb-6">
+        <button
+          v-for="stat in statuses"
+          :key="stat"
+          @click="setStatus(stat)"
+          class="px-4 py-2 border-b-2"
+          :class="
+            selectedStatus === stat ? underlineColors[stat] : 'border-transparent text-slate-500'
+          "
+        >
+          {{ stat }}
+        </button>
+      </div>
       <div
-        v-for="o in page.items"
-        :key="o.id"
-        @click="goToOrder(o.id)"
+        v-for="order in filteredOrders"
+        :key="order.id"
+        @click="goToOrder(order.id)"
         class="p-4 bg-white shadow rounded-lg border border-slate-200 hover:shadow-md transition cursor-pointer"
       >
         <div class="flex justify-between items-center">
-          <h3 class="font-semibold text-slate-900">Order #{{ o.id }}</h3>
-          <span class="text-sm text-slate-500">{{ o.status }}</span>
+          <h3 class="font-semibold text-slate-900">Order #{{ order.id }}</h3>
+          <span class="text-sm text-slate-500">{{ order.status }}</span>
         </div>
 
         <p class="text-slate-600 mt-1">
-          {{ o.items.length }} item(s) — Total:
-          <span class="font-semibold">${{ o.totalAmount.toFixed(2) }}</span>
+          {{ order.items.length }} item(s) — Total:
+          <span class="font-semibold">${{ order.totalAmount.toFixed(2) }}</span>
         </p>
 
-        <p class="text-xs text-slate-400">Placed: {{ o.createdAt }}</p>
+        <p class="text-xs text-slate-400">Placed: {{ formatDate(order.createdAt) }}</p>
       </div>
     </div>
 

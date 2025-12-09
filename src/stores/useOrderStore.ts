@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { createOrder, getOrder, getOrders, cancelOrder } from '@/services/order-service'
 import type { OrderResponse, CheckOutRequest } from '@/types/order'
 import { useToastHandler } from '@/composables/useToastHandler'
@@ -13,7 +13,18 @@ export const useOrderStore = defineStore('orders', () => {
 
   const { apiError, success } = useToastHandler()
 
-  const loadOrders = async (pageNum = 0, size = 12) => {
+  const selectedStatus = ref<'ALL' | 'NEW' | 'CANCELLED' | 'PENDING' | 'COMPLETED'>('ALL')
+
+  const filteredOrders = computed(() => {
+    if (selectedStatus.value === 'ALL') return orders.value
+    return orders.value.filter((o) => o.status === selectedStatus.value)
+  })
+
+  const setStatus = (status: 'ALL' | 'NEW' | 'CANCELLED' | 'PENDING' | 'COMPLETED') => {
+    selectedStatus.value = status
+  }
+
+  const loadOrders = async (pageNum = 0, size = 20) => {
     loading.value = true
     try {
       const result = await getOrders(pageNum, size)
@@ -50,7 +61,6 @@ export const useOrderStore = defineStore('orders', () => {
   const cancel = async (id: number, reason: string) => {
     try {
       const updated = await cancelOrder(id, reason)
-      success('Order cancelled!')
       return updated
     } catch (err) {
       apiError(err)
@@ -62,6 +72,11 @@ export const useOrderStore = defineStore('orders', () => {
     order,
     page,
     loading,
+
+    filteredOrders,
+    selectedStatus,
+    setStatus,
+
     loadOrders,
     loadOrder,
     create,
