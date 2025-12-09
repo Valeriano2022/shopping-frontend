@@ -4,7 +4,7 @@ import type { ProductResponse } from '@/types/product'
 
 defineProps<{ product: ProductResponse }>()
 const emit = defineEmits<{
-  'add-to-cart': (payload: AddToCartRequest) => void
+  (event: 'add-to-cart', payload: AddToCartRequest): void
 }>()
 </script>
 

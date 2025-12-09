@@ -1,31 +1,21 @@
-import { ref, watch } from 'vue'
-import { fetchProducts } from '@/services/product-service'
+import { computed, watch } from 'vue'
 import { useSearchStore } from '@/stores/useSearchStore'
-import type { UnwrappedPaged } from '@/types/hateoas'
-import type { ProductResponse } from '@/types/product'
-import { useToastHandler } from './useToastHandler'
+import { useProductStore } from '@/stores/useProductStore'
 
 export function useProducts() {
-  const loading = ref(false)
-  const error = ref<string | null>(null)
-  const data = ref<UnwrappedPaged<ProductResponse> | null>(null)
-
+  const productStore = useProductStore()
   const searchStore = useSearchStore()
-  const { apiError } = useToastHandler()
 
-  const load = async (pageIndex = 0) => {
-    loading.value = true
-    error.value = null
+  const load = productStore.loadProducts
 
-    try {
-      data.value = await fetchProducts(pageIndex, 12, searchStore.query)
-    } catch (err) {
-      apiError(err)
-      error.value = 'Failed to load products'
-    } finally {
-      loading.value = false
-    }
-  }
+  const pageInfo = computed(() => productStore.page)
+
+  const filteredProducts = computed(() => {
+    if (!searchStore.query) return productStore.products
+
+    const q = searchStore.query.toLowerCase()
+    return productStore.products.filter((p) => p.name.toLowerCase().includes(q))
+  })
 
   watch(
     () => searchStore.query,
@@ -33,9 +23,8 @@ export function useProducts() {
   )
 
   return {
-    data,
-    loading,
-    error,
     load,
+    filteredProducts,
+    pageInfo,
   }
 }
