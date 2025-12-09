@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import {
   fetchCart,
   addToCart,
@@ -11,6 +11,8 @@ import type { CartResponse, AddToCartRequest, UpdateCartItemRequest } from '@/ty
 import { useToastHandler } from './useToastHandler'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useSearchStore } from '@/stores/useSearchStore'
+import { useOrders } from './useOrders'
 
 export function useCart() {
   const loading = ref(false)
@@ -20,6 +22,8 @@ export function useCart() {
   const { apiError, success } = useToastHandler()
   const auth = useAuthStore()
   const router = useRouter()
+  const { create } = useOrders()
+  const toast = useToastHandler()
 
   const load = async () => {
     loading.value = true
@@ -35,7 +39,7 @@ export function useCart() {
 
   const add = async (payload: AddToCartRequest) => {
     if (!auth.isAuthenticated) {
-      apiError('Please login to add items to your cart.')
+      toast.warning('Please login to add items to your cart.')
       router.push('/login')
       return
     }
@@ -105,6 +109,34 @@ export function useCart() {
     }
   }
 
+  const checkout = async () => {
+    try {
+      if (!cart.value || cart.value.items.length === 0) {
+        apiError('Your cart is empty.')
+        return
+      }
+      const order = await create({})
+      if (!order) {
+        apiError('Failed to create order.')
+        return
+      }
+      await clear()
+      router.push(`/orders`)
+    } catch (error) {
+      apiError(`Checkout failed. ${(error as Error).message}`)
+    }
+  }
+  const searchStore = useSearchStore()
+
+  const filteredItems = computed(() => {
+    if (!cart.value) return []
+    if (!searchStore.query) return cart.value.items
+
+    return cart.value.items.filter((i) =>
+      i.product.name.toLowerCase().includes(searchStore.query.toLowerCase()),
+    )
+  })
+
   return {
     cart,
     loading,
@@ -115,5 +147,7 @@ export function useCart() {
     remove,
     removeProduct,
     clear,
+    checkout,
+    filteredItems,
   }
 }

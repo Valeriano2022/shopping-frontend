@@ -21,7 +21,7 @@
     <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-10">
       <div class="lg:col-span-2 space-y-6">
         <div
-          v-for="item in cart?.items"
+          v-for="item in filteredItems"
           :key="item.id"
           class="flex items-center gap-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm"
         >
@@ -99,13 +99,8 @@ import { onMounted } from 'vue'
 import { useCart } from '@/composables/useCart'
 import type { CartItemResponse } from '@/types/cart'
 import { useToast } from 'vue-toastification'
-import { useOrders } from '@/composables/useOrders'
-import { useRouter } from 'vue-router'
 
-const router = useRouter()
-const { create } = useOrders()
-
-const { cart, loading, error, load, update, remove, clear } = useCart()
+const { cart, loading, error, load, update, remove, clear, checkout, filteredItems } = useCart()
 const toast = useToast()
 
 onMounted(() => load())
@@ -119,17 +114,17 @@ const decrease = (item: CartItemResponse) => {
   update({ cartItemId: item.id, quantity: item.quantity - 1 })
 }
 
-const removeItem = async (id: number) => {
+const removeItem = (id: number) => {
   try {
-    await remove(id)
+    remove(id)
   } catch (error) {
     toast.error(`Failed to remove item. ${(error as Error).message}`)
   }
 }
 
-const clearCart = async () => {
+const clearCart = () => {
   try {
-    await clear()
+    clear()
     toast.success('Cart cleared.')
   } catch (error) {
     toast.error(`Failed to clear cart. ${(error as Error).message}`)
@@ -137,20 +132,6 @@ const clearCart = async () => {
 }
 
 const onCheckout = async () => {
-  try {
-    if (!cart.value || cart.value.items.length === 0) {
-      toast.error('Your cart is empty.')
-      return
-    }
-    const order = await create({}) // CheckOutRequest is optional in DTO
-    if (!order) {
-      toast.error('Failed to create order.')
-      return
-    }
-    await clear()
-    router.push(`/orders/${order.id}`)
-  } catch (error) {
-    toast.error(`Checkout failed. ${(error as Error).message}`)
-  }
+  checkout()
 }
 </script>
