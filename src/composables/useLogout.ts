@@ -15,7 +15,6 @@ export function useLogout() {
       await api.post('/api/auth/logout')
       success('You have been logged out.')
     } catch (err) {
-      // do NOT block logout on backend errors
       apiError(err)
     } finally {
       auth.logout()
